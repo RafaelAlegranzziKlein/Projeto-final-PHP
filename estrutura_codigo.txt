@@ -1,0 +1,34 @@
+📁 portal_curiosidades/         <-- Pasta principal do seu projeto (dentro do htdocs)
+│
+├── 📁 admin/                 <-- 🔐 ÁREA RESTRITA (Exige login)
+│   ├── dashboard.php         <-- Tela inicial do usuário/jornalista logado
+│   ├── nova_noticia.php      <-- Formulário para postar notícia (só jornalista)
+│   ├── editar_noticia.php    <-- Formulário de edição (só o autor)
+│   ├── excluir_noticia.php   <-- Script que apaga a notícia do banco (só o autor)
+│   ├── usuarios.php          <-- Lista de usuários (opcional/admin, só jornalista)
+│   ├── editar_usuario.php    <-- Para alterar dados da própria conta
+│   └── excluir_usuario.php   <-- Script que apaga a própria conta
+│
+├── 📁 assets/                <-- 🎨 ARQUIVOS VISUAIS (CSS, Imagens, etc.)
+│   ├── 📁 css/
+│   │   └── style.css         <-- Seu arquivo de estilos
+│   └── 📁 imagens/
+│       └── 📁 noticias/      <-- Salve aqui as imagens de capa das notícias
+│
+├── 📁 db/                    <-- 🧾 BANCO DE DADOS
+│   └── dump.sql              <-- O arquivo com o código SQL que criamos
+│
+├── 📁 includes/              <-- 🧠 CÓDIGOS DE FUNDO (Apenas PHP)
+│   ├── conexao.php           <-- Conecta o PHP ao banco de dados
+│   ├── funcoes.php           <-- Funções extras (sessão, validação, controle de papel)
+│   ├── verifica_login.php    <-- Trava de segurança: exige qualquer usuário logado
+│   └── verifica_jornalista.php <-- Trava de segurança: exige usuário do tipo jornalista
+│
+├── 📄 cadastro.php           <-- 🏠 PÁGINAS PÚBLICAS (Qualquer um acessa)
+├── 📄 index.php              <-- Página principal (vitrine de notícias)
+├── 📄 login.php              <-- Formulário de acesso
+├── 📄 logout.php             <-- Script para encerrar a sessão
+├── 📄 noticia.php            <-- Página que exibe a notícia completa + comentários
+└── 📄 README.md              <-- Instruções do seu trabalho
+
+
