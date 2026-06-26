@@ -4,8 +4,8 @@
  * Formulário de login com verificação de credenciais
  */
 
-require_once __DIR__ . '/include/funcoes.php';
-require_once __DIR__ . '/include/conexao.php';
+require_once __DIR__ . '/includes/funcoes.php';
+require_once __DIR__ . '/includes/conexao.php';
 
 if (estaLogado()) {
     header("Location: dashboard.php");
