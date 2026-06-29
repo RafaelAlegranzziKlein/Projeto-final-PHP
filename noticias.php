@@ -60,7 +60,7 @@ if ($id > 0) {
 </head>
 <body>
 
-<?php include __DIR__ . '/includes/_header.php'; ?>
+<?php include __DIR__ . '/includes/header.php'; ?>
 
 <main>
   <div class="main-content">
@@ -156,7 +156,7 @@ if ($id > 0) {
   </div>
 </main>
 
-<?php include __DIR__ . '/includes/_footer.php'; ?>
+<?php include __DIR__ . '/includes/footer.php'; ?>
 </body>
 </html>
 <?php
