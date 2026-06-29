@@ -28,17 +28,7 @@ $paginaAtual = basename($_SERVER['SCRIPT_NAME']);
   <div class="container header__inner">
     <a href="index.php" class="logo">Folha<span>Digital</span></a>
 
-    <nav class="nav">
-      <ul class="nav__list">
-        <li><a href="index.php" class="nav__link <?= $paginaAtual === 'index.php' ? 'is-active' : '' ?>">Início</a></li>
-        <li><a href="noticias.php?categoria=politica" class="nav__link">Política</a></li>
-        <li><a href="noticias.php?categoria=economia" class="nav__link">Economia</a></li>
-        <li><a href="noticias.php?categoria=esportes" class="nav__link">Esportes</a></li>
-        <li><a href="noticias.php?categoria=cultura" class="nav__link">Cultura</a></li>
-        <li><a href="noticias.php?categoria=tecnologia" class="nav__link">Tecnologia</a></li>
-        <li><a href="noticias.php" class="nav__link <?= $paginaAtual === 'noticias.php' ? 'is-active' : '' ?>">Notícias</a></li>
-      </ul>
-    </nav>
+
 
     <div class="header__actions">
       <button class="icon-btn" aria-label="Buscar">

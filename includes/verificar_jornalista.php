@@ -1,10 +1,15 @@
 <?php
-/**
- * verifica_jornalista.php
- * Inclua no topo de páginas exclusivas para jornalistas
- * (ex.: nova_noticia.php, editar_noticia.php, excluir_noticia.php)
- */
+session_start();
 
-require_once __DIR__ . '/funcoes.php';
+// Verifica se o usuário está logado
+if (!isset($_SESSION['usuario_id'])) {
+    header("Location: ../login.php");
+    exit;
+}
 
-exigirJornalista();
+// Verifica se o tipo de usuário é 'jornalista' ou 'admin'
+if ($_SESSION['tipo_usuario'] !== 'jornalista' && $_SESSION['tipo_usuario'] !== 'admin') {
+    echo "<script>alert('Acesso negado. Apenas jornalistas podem acessar esta página.'); window.location.href='dashboard.php';</script>";
+    exit;
+}
+?>
