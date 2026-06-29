@@ -1,0 +1,46 @@
+/* ==========================================================================
+   RESPONSIVIDADE E MEDIA QUERIES (MOBILE FIRST)
+   ========================================================================== */
+
+/* ---- Tablet pequeno: ≥ 480px ---- */
+@media (min-width: 480px) {
+  .news-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- Tablet: ≥ 768px ---- */
+@media (min-width: 768px) {
+  :root { --header-height: 76px; }
+  .topbar { font-size: 0.85rem; }
+  .logo { font-size: 2rem; }
+  .hero__excerpt { display: block; }
+  .hero__side-item img { height: 90px; }
+  .footer__top { grid-template-columns: 1.5fr 1fr 1fr; }
+  .footer__bottom { flex-direction: row; justify-content: space-between; text-align: left; }
+  .news-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ---- Desktop: ≥ 1024px ---- */
+@media (min-width: 1024px) {
+  .menu-toggle { display: none; }
+  .nav { display: block; }
+  .nav--mobile { display: none; }
+  .hero__grid { grid-template-columns: 2fr 1fr; }
+  .content-grid { grid-template-columns: 2.2fr 1fr; align-items: start; }
+  .news-grid { grid-template-columns: repeat(3, 1fr); }
+  .footer__top { grid-template-columns: 2fr 1fr 1fr 1fr; }
+}
+
+/* ---- Desktop grande: ≥ 1280px ---- */
+@media (min-width: 1280px) {
+  .news-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ---- Impressão ---- */
+@media print {
+  .header, .topbar, .breaking, .nav--mobile,
+  .sidebar, .footer, .back-to-top, .ad-slot {
+    display: none !important;
+  }
+  body { color: #000; background: #fff; }
+  .content-grid { grid-template-columns: 1fr; }
+}
