@@ -2,7 +2,7 @@
 /**
  * noticias.php
  * Colunas reais: id, titulo, noticia, data, autor (INT → JOIN usuarios), imagem
- * Sem: resumo, categoria, destaque, visualizacoes
+ * Funcionalidades: visualização, listagem, busca, paginação, COMENTÁRIOS e LIKES
  *
  * ?id=N       → exibe a notícia N
  * ?busca=X    → lista com filtro por título/texto
@@ -48,6 +48,76 @@ if ($id > 0) {
         );
         $stmtRel->execute([$id]);
         $relacionadas = $stmtRel->fetchAll();
+
+        // ── LIKES ──────────────────────────────────────────────
+        // Conta total de likes
+        $stmtLikes = $pdo->prepare("SELECT COUNT(*) AS total FROM likes_noticia WHERE noticia_id = ?");
+        $stmtLikes->execute([$id]);
+        $totalLikes = (int) $stmtLikes->fetch()['total'];
+
+        // Verifica se o usuário logado já curtiu
+        $usuarioJaCurtiu = false;
+        if (estaLogado()) {
+            $stmtMeuLike = $pdo->prepare(
+                "SELECT id FROM likes_noticia WHERE noticia_id = ? AND usuario_id = ?"
+            );
+            $stmtMeuLike->execute([$id, $_SESSION['usuario_id']]);
+            $usuarioJaCurtiu = (bool) $stmtMeuLike->fetch();
+        }
+
+        // Processa ação de curtir / descurtir (POST com token)
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_like'])) {
+            if (!estaLogado()) {
+                header("Location: login.php?redirect=noticias.php?id=$id");
+                exit;
+            }
+            $uid = (int) $_SESSION['usuario_id'];
+            if ($usuarioJaCurtiu) {
+                // Remove o like
+                $stmtDel = $pdo->prepare("DELETE FROM likes_noticia WHERE noticia_id = ? AND usuario_id = ?");
+                $stmtDel->execute([$id, $uid]);
+            } else {
+                // Insere o like (IGNORE evita duplicata se houver race condition)
+                $stmtIns = $pdo->prepare("INSERT IGNORE INTO likes_noticia (noticia_id, usuario_id) VALUES (?, ?)");
+                $stmtIns->execute([$id, $uid]);
+            }
+            header("Location: noticias.php?id=$id#likes");
+            exit;
+        }
+
+        // ── COMENTÁRIOS ────────────────────────────────────────
+        // Processa novo comentário (POST)
+        $erroComentario = '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_comentario'])) {
+            if (!estaLogado()) {
+                header("Location: login.php?redirect=noticias.php?id=$id");
+                exit;
+            }
+            $texto = trim($_POST['texto_comentario'] ?? '');
+            if ($texto === '') {
+                $erroComentario = 'O comentário não pode estar vazio.';
+            } elseif (mb_strlen($texto) > 1000) {
+                $erroComentario = 'O comentário pode ter no máximo 1000 caracteres.';
+            } else {
+                $stmtCom = $pdo->prepare(
+                    "INSERT INTO comentarios (noticia_id, usuario_id, texto) VALUES (?, ?, ?)"
+                );
+                $stmtCom->execute([$id, (int) $_SESSION['usuario_id'], $texto]);
+                header("Location: noticias.php?id=$id#comentarios");
+                exit;
+            }
+        }
+
+        // Carrega comentários (com nome do autor)
+        $stmtComs = $pdo->prepare(
+            "SELECT c.id, c.texto, c.data, u.nome AS nome_autor, u.foto_perfil
+             FROM comentarios c
+             JOIN usuarios u ON u.id = c.usuario_id
+             WHERE c.noticia_id = ?
+             ORDER BY c.data ASC"
+        );
+        $stmtComs->execute([$id]);
+        $comentarios = $stmtComs->fetchAll();
     }
     ?>
 <!DOCTYPE html>
@@ -57,6 +127,53 @@ if ($id > 0) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?= limpar($tituloPagina) ?> — Folha Digital</title>
   <link rel="stylesheet" href="./assets/css/main.css">
+  <style>
+    /* ── Likes ── */
+    .like-area { display:flex; align-items:center; gap:.75rem; margin-bottom:2rem; }
+    .btn-like {
+      display:inline-flex; align-items:center; gap:.4rem;
+      padding:.45rem 1.1rem; border-radius:2rem;
+      border: 2px solid var(--color-primary);
+      background: transparent; cursor:pointer;
+      font-size:.95rem; font-weight:600;
+      color: var(--color-primary);
+      transition: background .2s, color .2s;
+    }
+    .btn-like:hover, .btn-like.curtido { background: var(--color-primary); color:#fff; }
+    .btn-like svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
+    .like-count { font-weight:700; font-size:1rem; }
+
+    /* ── Comentários ── */
+    .comments-section { margin-top:2.5rem; }
+    .comments-section h2 { font-size:1.3rem; margin-bottom:1.2rem; }
+    .comment-card {
+      display:flex; gap:.9rem;
+      padding:.9rem 0;
+      border-bottom:1px solid var(--color-border);
+    }
+    .comment-card:last-child { border-bottom:none; }
+    .comment-avatar {
+      width:40px; height:40px; border-radius:50%; object-fit:cover;
+      flex-shrink:0; background:#ddd;
+    }
+    .comment-body { flex:1; }
+    .comment-author { font-weight:700; font-size:.9rem; }
+    .comment-date   { font-size:.8rem; color:var(--color-text-muted); margin-left:.5rem; }
+    .comment-text   { margin-top:.3rem; font-size:.95rem; line-height:1.6; }
+    .comment-form textarea {
+      width:100%; min-height:90px;
+      padding:.6rem .9rem;
+      border:1px solid var(--color-border);
+      border-radius:var(--radius-sm);
+      background:var(--color-bg-alt);
+      font-size:.95rem; resize:vertical;
+    }
+    .comment-form .btn { margin-top:.5rem; }
+    .alert-inline { padding:.6rem .9rem; border-radius:var(--radius-sm); margin-bottom:.8rem;
+                    background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:.9rem; }
+    .login-prompt { background:var(--color-bg-alt); padding:1rem;
+                    border-radius:var(--radius-sm); font-size:.95rem; margin-top:.8rem; }
+  </style>
 </head>
 <body>
 
@@ -99,6 +216,90 @@ if ($id > 0) {
           <div style="font-size: 1.05rem; line-height: 1.85; color: var(--color-text);">
             <?= nl2br(limpar($noticia['noticia'])) ?>
           </div>
+
+          <!-- ── ÁREA DE LIKES ──────────────────────────────── -->
+          <div id="likes" style="margin-top:2rem;">
+            <form action="noticias.php?id=<?= $id ?>#likes" method="post">
+              <input type="hidden" name="acao_like" value="1">
+              <div class="like-area">
+                <?php if (estaLogado()): ?>
+                  <button type="submit"
+                          class="btn-like <?= $usuarioJaCurtiu ? 'curtido' : '' ?>"
+                          title="<?= $usuarioJaCurtiu ? 'Remover curtida' : 'Curtir esta notícia' ?>">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                            <?= $usuarioJaCurtiu ? 'fill="currentColor"' : '' ?>></path>
+                    </svg>
+                    <?= $usuarioJaCurtiu ? 'Curtido' : 'Curtir' ?>
+                  </button>
+                <?php else: ?>
+                  <a href="login.php?redirect=noticias.php?id=<?= $id ?>" class="btn-like">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    Curtir
+                  </a>
+                <?php endif; ?>
+                <span class="like-count">
+                  <?= $totalLikes ?> <?= $totalLikes === 1 ? 'curtida' : 'curtidas' ?>
+                </span>
+              </div>
+            </form>
+          </div>
+
+          <!-- ── SEÇÃO DE COMENTÁRIOS ───────────────────────── -->
+          <div id="comentarios" class="comments-section">
+            <h2>Comentários (<?= count($comentarios) ?>)</h2>
+
+            <?php if (empty($comentarios)): ?>
+              <p style="color:var(--color-text-muted); font-size:.95rem;">
+                Seja o primeiro a comentar!
+              </p>
+            <?php else: ?>
+              <?php foreach ($comentarios as $com): ?>
+                <div class="comment-card">
+                  <?php
+                    $avatarSrc = !empty($com['foto_perfil'])
+                      ? 'assets/img/perfil/' . limpar($com['foto_perfil'])
+                      : 'assets/img/placeholder.jpg';
+                  ?>
+                  <img class="comment-avatar"
+                       src="<?= $avatarSrc ?>"
+                       alt="<?= limpar($com['nome_autor']) ?>">
+                  <div class="comment-body">
+                    <span class="comment-author"><?= limpar($com['nome_autor']) ?></span>
+                    <span class="comment-date"><?= date('d/m/Y H:i', strtotime($com['data'])) ?></span>
+                    <p class="comment-text"><?= nl2br(limpar($com['texto'])) ?></p>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <!-- Formulário de novo comentário -->
+            <div style="margin-top:1.5rem;">
+              <h3 style="font-size:1.05rem; margin-bottom:.8rem;">Deixe seu comentário</h3>
+
+              <?php if (estaLogado()): ?>
+                <?php if ($erroComentario): ?>
+                  <div class="alert-inline" role="alert"><?= limpar($erroComentario) ?></div>
+                <?php endif; ?>
+                <form action="noticias.php?id=<?= $id ?>#comentarios" method="post" class="comment-form">
+                  <input type="hidden" name="acao_comentario" value="1">
+                  <textarea name="texto_comentario"
+                            placeholder="Escreva seu comentário aqui..."
+                            maxlength="1000"
+                            required><?= limpar($_POST['texto_comentario'] ?? '') ?></textarea>
+                  <button type="submit" class="btn btn--primary">Publicar comentário</button>
+                </form>
+              <?php else: ?>
+                <div class="login-prompt">
+                  <a href="login.php?redirect=noticias.php?id=<?= $id ?>">Entre</a> ou
+                  <a href="cadastro.php">crie uma conta</a> para comentar.
+                </div>
+              <?php endif; ?>
+            </div>
+          </div>
+          <!-- /comentarios -->
 
           <hr style="margin-block: var(--space-2xl); border: none; border-top: 1px solid var(--color-border);">
 
@@ -183,8 +384,10 @@ $totalPaginas  = max(1, (int) ceil($totalNoticias / $porPagina));
 $pagina        = min($pagina, $totalPaginas);
 $offset        = ($pagina - 1) * $porPagina;
 
-// Notícias da página atual
-$sql = "SELECT n.id, n.titulo, n.noticia, n.imagem, n.data, u.nome AS nome_autor
+// Notícias da página atual (com contagem de likes e comentários via subquery)
+$sql = "SELECT n.id, n.titulo, n.noticia, n.imagem, n.data, u.nome AS nome_autor,
+               (SELECT COUNT(*) FROM likes_noticia l WHERE l.noticia_id = n.id) AS total_likes,
+               (SELECT COUNT(*) FROM comentarios c   WHERE c.noticia_id  = n.id) AS total_comentarios
         FROM noticias n
         JOIN usuarios u ON u.id = n.autor
         $where
@@ -252,6 +455,10 @@ $tituloPagina = $busca !== '' ? 'Resultados para "' . $busca . '"' : 'Todas as n
                     <span><?= limpar($noticia['nome_autor']) ?></span>
                     <span>&middot;</span>
                     <span><?= date('d/m/Y', strtotime($noticia['data'])) ?></span>
+                    <span>&middot;</span>
+                    <span>♥ <?= (int) $noticia['total_likes'] ?></span>
+                    <span>&middot;</span>
+                    <span>💬 <?= (int) $noticia['total_comentarios'] ?></span>
                   </div>
                 </div>
               </article>
