@@ -31,9 +31,11 @@ $stmtSecundarias = $pdo->prepare(
 $stmtSecundarias->execute([$idDestaque]);
 $destaquesSecundarios = $stmtSecundarias->fetchAll();
 
-// Grid de notícias recentes para o feed
+// Grid de notícias recentes para o feed (com contadores de likes e comentários)
 $stmtRecentes = $pdo->query(
-    "SELECT n.id, n.titulo, n.noticia, n.imagem, n.data, u.nome AS nome_autor
+    "SELECT n.id, n.titulo, n.noticia, n.imagem, n.data, u.nome AS nome_autor,
+            (SELECT COUNT(*) FROM likes_noticia l WHERE l.noticia_id = n.id) AS total_likes,
+            (SELECT COUNT(*) FROM comentarios c   WHERE c.noticia_id  = n.id) AS total_comentarios
      FROM noticias n
      JOIN usuarios u ON u.id = n.autor
      ORDER BY n.data DESC
@@ -134,6 +136,10 @@ $maisLidas = $stmtMaisLidas->fetchAll();
                     <span><?= limpar($noticia['nome_autor']) ?></span>
                     <span>&middot;</span>
                     <span><?= date('d/m/Y', strtotime($noticia['data'])) ?></span>
+                    <span>&middot;</span>
+                    <span>♥ <?= (int)($noticia['total_likes'] ?? 0) ?></span>
+                    <span>&middot;</span>
+                    <span>💬 <?= (int)($noticia['total_comentarios'] ?? 0) ?></span>
                   </div>
                 </div>
               </article>
